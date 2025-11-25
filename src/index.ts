@@ -1,23 +1,30 @@
 import { Hono } from 'hono'
-import { basicAuth } from 'hono/basic-auth'
 import { cors } from 'hono/cors'
 
 export const app = new Hono()
 
-app.use(cors())
+// Used to detect cold starts
+let requests = 0
 
-app.get('/', (c) => c.json({ message: 'Hello World' }))
+app.use(async (_, next) => {
+  requests++
+  next()
+})
 
-app.get(
-  '/secret',
-  basicAuth({
-    username: 'admin',
-    password: 'admin',
-  }),
-  (c) => {
-    return c.text('This is a secret!')
-  }
-)
+app.use(cors({
+  origin: (origin) => origin,
+  allowMethods: ["GET", "POST", "OPTIONS"]
+}))
+
+app.get("/", (c) => {
+  return c.json({
+    ip: c.req.header()["ar-real-ip"],
+    countrycode: c.req.header()["x-country-code"],
+    _ddata: {
+      rq: requests
+    }
+  })
+})
 
 // Make it compatible with R1Cloud Edge
 export default {
